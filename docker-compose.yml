@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  zeppelin:
+    build: .
+    container_name: zeppelin
+    ports:
+      - "8080:8080"
+      - "4040:4040"      # Cổng Spark UI (nếu cần)
+    environment:
+      SPARK_HOME: /opt/spark
+      PYSPARK_PYTHON: python3
+      PYSPARK_DRIVER_PYTHON: python3
+      ZEPPELIN_NOTEBOOK_DIR: /notebook
+      ZEPPELIN_LOG_DIR: /logs
+    volumes:
+      - ./notebook:/notebook  # Lưu trữ notebook ra thư mục host
+      - ./logs:/logs          # Lưu trữ log của Zeppelin
