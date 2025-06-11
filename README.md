@@ -1,64 +1,71 @@
 # Zeppelin PySpark Docker
 
-Docker setup để chạy Apache Zeppelin với PySpark.
+Docker setup to run Apache Zeppelin with PySpark, MinIO (Data Lake) and PostgreSQL (Data Warehouse).
 
-## Cấu trúc dự án
+## Project Structure
 
 ```
 zeppelin-pyspark/
-  ├── docker-compose.yml    # Cấu hình Docker Compose
-  ├── Dockerfile            # Cấu hình Docker image
-  ├── notebook/             # Thư mục lưu trữ notebook (được mount vào container)
-  └── logs/                 # Thư mục lưu trữ log (được mount vào container)
+  ├── docker-compose.yml    # Docker Compose configuration
+  ├── Dockerfile            # Docker image configuration
+  ├── notebook/             # Directory for storing notebooks (mounted to container)
+  ├── logs/                 # Directory for storing logs (mounted to container)
+  └── data/                 # Directory for storing data
+      ├── minio/            # MinIO data (Data Lake)
+      └── postgres/         # PostgreSQL data (Data Warehouse)
 ```
 
-## Thông tin cấu hình
+## Configuration Information
 
-- **Zeppelin**: Phiên bản 0.12.0
-- **Spark**: Phiên bản 3.5.6 với Hadoop 3
-- **Python**: Python 3 với các thư viện: numpy, pandas, matplotlib
+- **Zeppelin**: Version 0.12.0
+- **Spark**: Version 3.5.6 with Hadoop 3
+- **Python**: Python 3 with libraries: numpy, pandas, matplotlib, delta-spark
+- **MinIO**: Data Lake (S3-compatible)
+- **PostgreSQL**: Data Warehouse
 
-## Cách sử dụng
+### Environment Variables
 
-### Khởi động
+Environment variables are configured in the `.env` file:
+
+```
+# MinIO Configuration
+MINIO_ENDPOINT=http://minio:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+LAKE_BUCKET=lake
+
+# PostgreSQL Configuration
+PG_URL=jdbc:postgresql://postgres_dw:5432/dw
+PG_USER=dw_user
+PG_PASSWORD=dw_pass
+PG_SCHEMA=public
+```
+
+## Usage
+
+### Starting Up
 
 ```bash
 docker-compose up -d
 ```
 
-### Truy cập Zeppelin
+### Accessing Services
 
-Mở trình duyệt và truy cập:
-- Zeppelin UI: http://localhost:8080
-- Spark UI: http://localhost:4040 (khi có job Spark đang chạy)
+Open your browser and access:
+- **Zeppelin UI**: http://localhost:8080
+- **Spark UI**: http://localhost:4040 (when Spark jobs are running)
+- **MinIO Console**: http://localhost:9001 (user: minioadmin, password: minioadmin)
+- **PostgreSQL**: localhost:5432 (user: dw_user, password: dw_pass, db: dw)
 
-### Dừng container
+### Stopping Containers
 
 ```bash
 docker-compose down
 ```
 
-## Sử dụng PySpark trong Zeppelin
+## Notes
 
-Tạo notebook mới và sử dụng các interpreter:
-
-- `%spark` - Spark với Scala
-- `%pyspark` - Spark với Python
-- `%sql` - Spark SQL
-
-Ví dụ đơn giản với PySpark:
-
-```python
-%pyspark
-print("Spark version:", sc.version)
-
-# Tạo DataFrame đơn giản
-data = [("Alice", 34), ("Bob", 45), ("Carol", 25)]
-df = spark.createDataFrame(data, ["Name", "Age"])
-df.show()
-```
-
-## Lưu ý
-
-- Các notebook được lưu trong thư mục `notebook/` trên máy host
-- Logs được lưu trong thư mục `logs/` trên máy host 
+- Notebooks are stored in the `notebook/` directory on the host machine
+- Logs are stored in the `logs/` directory on the host machine
+- MinIO data is stored in the `data/minio/` directory on the host machine
+- PostgreSQL data is stored in the `data/postgres/` directory on the host machine 

@@ -1,17 +1,85 @@
 version: "3.8"
+
 services:
   zeppelin:
     build: .
     container_name: zeppelin
     ports:
-      - "8080:8080"
-      - "4040:4040"      # Cổng Spark UI (nếu cần)
+      - "8080:8080" # Zeppelin web UI
+      - "4040:4040" # Spark UI
     environment:
+      # Spark & Python
       SPARK_HOME: /opt/spark
       PYSPARK_PYTHON: python3
       PYSPARK_DRIVER_PYTHON: python3
       ZEPPELIN_NOTEBOOK_DIR: /notebook
       ZEPPELIN_LOG_DIR: /logs
+
+      # MinIO config (S3 compatible)
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      LAKE_BUCKET: ${LAKE_BUCKET}
+
+      # PostgreSQL config
+      PG_HOST: ${PG_HOST}
+      PG_PORT: ${PG_PORT}
+      PG_DB: ${PG_DB}
+      PG_USER: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+      PG_SCHEMA: ${PG_SCHEMA}
+      PG_URL: ${PG_URL}
     volumes:
-      - ./notebook:/notebook  # Lưu trữ notebook ra thư mục host
-      - ./logs:/logs          # Lưu trữ log của Zeppelin
+      - ./notebook:/notebook
+      - ./logs:/logs
+      - ./data/minio:/data
+    depends_on:
+      minio:
+        condition: service_healthy
+      postgres_dw:
+        condition: service_healthy
+    networks:
+      - datanet
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"   # MinIO S3 API
+      - "9001:9001"   # MinIO console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - ./data/minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - datanet
+
+  postgres_dw:
+    image: postgres:15
+    container_name: postgres_dw
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datanet
+
+networks:
+  datanet:
+    driver: bridge
